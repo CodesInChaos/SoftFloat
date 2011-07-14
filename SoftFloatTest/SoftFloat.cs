@@ -2,10 +2,12 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Diagnostics;
 
 namespace SoftFloatTest
 {
 	// Internal representation is identical to IEEE binary32 floatingpoints
+	[DebuggerDisplay("{ToStringInv()}")]
 	public struct SoftFloat : IEquatable<SoftFloat>, IComparable<SoftFloat>, IComparable, IFormattable
 	{
 		private readonly uint _raw;
@@ -16,7 +18,7 @@ namespace SoftFloatTest
 		}
 
 		private uint RawMantissa { get { return _raw & 0x7FFFFF; } }
-		public int Mantissa
+		private int Mantissa
 		{
 			get
 			{
@@ -37,7 +39,7 @@ namespace SoftFloatTest
 			}
 		}
 
-		public sbyte Exponent { get { return (sbyte)(RawExponent - ExponentBias); } }
+		private sbyte Exponent { get { return (sbyte)(RawExponent - ExponentBias); } }
 
 		private byte RawExponent { get { return (byte)(_raw >> MantissaBits); } }
 
@@ -343,6 +345,26 @@ namespace SoftFloatTest
 			}
 		}
 
+		public static bool operator <(SoftFloat f1, SoftFloat f2)
+		{
+			throw new NotImplementedException();
+		}
+
+		public static bool operator >(SoftFloat f1, SoftFloat f2)
+		{
+			throw new NotImplementedException();
+		}
+
+		public static bool operator <=(SoftFloat f1, SoftFloat f2)
+		{
+			throw new NotImplementedException();
+		}
+
+		public static bool operator >=(SoftFloat f1, SoftFloat f2)
+		{
+			throw new NotImplementedException();
+		}
+
 		public int CompareTo(SoftFloat other)
 		{
 			throw new NotImplementedException();
@@ -393,6 +415,101 @@ namespace SoftFloatTest
 		public string ToString(IFormatProvider provider)
 		{
 			return ((float)this).ToString(provider);
+		}
+
+		public string ToStringInv()
+		{
+			return ((float)this).ToString(System.Globalization.CultureInfo.InvariantCulture);
+		}
+
+		public static SoftFloat Sqrt(SoftFloat f)
+		{
+			if (f < SoftFloat.Zero)
+				return SoftFloat.NaN;
+			throw new NotImplementedException();
+		}
+
+		public static SoftFloat Exp(SoftFloat f)
+		{
+			throw new NotImplementedException();
+		}
+
+		public static SoftFloat Abs(SoftFloat f)
+		{
+			if (f.RawExponent != 255 || IsInfinity(f))
+				return new SoftFloat(f._raw ^ SignMask);
+			else
+				return f;//Leave NaN untouched
+		}
+
+		public static SoftFloat Acos(SoftFloat f)
+		{
+			throw new NotImplementedException();
+		}
+
+		public static SoftFloat Asin(SoftFloat f)
+		{
+			throw new NotImplementedException();
+		}
+
+		public static SoftFloat Atan(SoftFloat f)
+		{
+			throw new NotImplementedException();
+		}
+
+		public static SoftFloat Atan2(SoftFloat y, SoftFloat x)
+		{
+			throw new NotImplementedException();
+		}
+
+		public static SoftFloat Cos(SoftFloat f)
+		{
+			throw new NotImplementedException();
+		}
+
+		public static SoftFloat Cosh(SoftFloat f)
+		{
+			throw new NotImplementedException();
+		}
+
+		public static SoftFloat IEEERemainder(SoftFloat x, SoftFloat y)
+		{
+			throw new NotImplementedException();
+		}
+
+		public static SoftFloat Log(SoftFloat f)
+		{
+			throw new NotImplementedException();
+		}
+
+		public static SoftFloat Log(SoftFloat a, SoftFloat newBase)
+		{
+			throw new NotImplementedException();
+		}
+
+		public static SoftFloat Log10(SoftFloat f)
+		{
+			throw new NotImplementedException();
+		}
+
+		public static SoftFloat Max(SoftFloat val1, SoftFloat val2)
+		{
+			throw new NotImplementedException();
+		}
+
+		public static SoftFloat Min(SoftFloat val1, SoftFloat val2)
+		{
+			throw new NotImplementedException();
+		}
+
+		public static SoftFloat Pow(SoftFloat x, SoftFloat y)
+		{
+			throw new NotImplementedException();
+		}
+
+		public static int Sign(SoftFloat value)
+		{
+			throw new NotImplementedException();
 		}
 	}
 }
