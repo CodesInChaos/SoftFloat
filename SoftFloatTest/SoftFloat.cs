@@ -5,8 +5,8 @@ using System.Text;
 
 namespace SoftFloatTest
 {
-	// Internal representation for finite normalized values corresponds to the IEEE binary32 representation
-	public struct SoftFloat
+	// Internal representation is identical to IEEE binary32 floatingpoints
+	public struct SoftFloat : IEquatable<SoftFloat>, IComparable<SoftFloat>, IComparable, IFormattable
 	{
 		private readonly uint _raw;
 
@@ -52,6 +52,9 @@ namespace SoftFloatTest
 		private const uint RawNegativeInfinity = RawPositiveInfinity ^ SignMask;
 		private const uint RawOne = 0x3F800000;
 		private const uint RawMinusOne = RawOne ^ SignMask;
+		private const uint RawMaxValue = 0x7F7FFFFF;
+		private const uint RawMinValue = 0x7F7FFFFF ^ SignMask;
+		private const uint RawEpsilon = 0x00000001;
 
 		public static SoftFloat Zero { get { return new SoftFloat(); } }
 		public static SoftFloat PositiveInfinity { get { return new SoftFloat(RawPositiveInfinity); } }
@@ -59,6 +62,8 @@ namespace SoftFloatTest
 		public static SoftFloat NaN { get { return new SoftFloat(RawNaN); } }
 		public static SoftFloat One { get { return new SoftFloat(RawOne); } }
 		public static SoftFloat MinusOne { get { return new SoftFloat(RawMinusOne); } }
+		public static SoftFloat MaxValue { get { return new SoftFloat(RawMaxValue); } }
+		public static SoftFloat Epsilon { get { return new SoftFloat(RawEpsilon); } }
 
 		public override string ToString()
 		{
@@ -135,7 +140,7 @@ namespace SoftFloatTest
 						rawExp -= 8;
 						absMan <<= 8;
 					}
-					int msbIndex= BitScanReverse8(msb);
+					int msbIndex = BitScanReverse8(msb);
 					rawExp += msbIndex;
 					absMan >>= msbIndex;
 					if ((uint)(rawExp - 1) < 254)
@@ -152,7 +157,7 @@ namespace SoftFloatTest
 							else
 								return NegativeInfinity;
 						}
-						if (rawExp >= -24)
+						if (rawExp >= -24)//Fixme
 						{
 							uint raw = (uint)man & 0x80000000 | absMan >> (-rawExp);
 							return new SoftFloat(raw);
@@ -191,12 +196,16 @@ namespace SoftFloatTest
 			byte rawExp1 = f1.RawExponent;
 			if (rawExp1 == 0)
 			{//SubNorm
-				man1 = f1.Mantissa;
+				//man1 = f1.Mantissa
+				uint sign1 = (uint)((int)f1._raw >> 31);
+				man1 = (int)((f1.RawMantissa ^ sign1) - sign1);
 				rawExp1 = 1;
 			}
 			else if (rawExp1 != 255)
 			{//Norm
-				man1 = f1.Mantissa;
+				//man1 = f1.Mantissa
+				uint sign1 = (uint)((int)f1._raw >> 31);
+				man1 = (int)(((f1.RawMantissa | 0x800000) ^ sign1) - sign1);
 			}
 			else
 			{//Non finite
@@ -207,12 +216,16 @@ namespace SoftFloatTest
 			byte rawExp2 = f2.RawExponent;
 			if (rawExp2 == 0)
 			{//SubNorm
-				man2 = f2.Mantissa;
+				//man2 = f2.Mantissa
+				uint sign2 = (uint)((int)f2._raw >> 31);
+				man2 = (int)(((f2.RawMantissa) ^ sign2) - sign2);
 				rawExp2 = 1;
 			}
 			else if (rawExp2 != 255)
 			{//Norm
-				man2 = f2.Mantissa;
+				//man2 = f2.Mantissa
+				uint sign2 = (uint)((int)f2._raw >> 31);
+				man2 = (int)(((f2.RawMantissa | 0x800000) ^ sign2) - sign2);
 			}
 			else
 			{//Non finite
@@ -248,6 +261,62 @@ namespace SoftFloatTest
 			return *((float*)&i);
 		}
 
+		public override bool Equals(object obj)
+		{
+			if (obj == null || GetType() != obj.GetType())
+			{
+				return false;
+			}
+			return this.Equals((SoftFloat)obj);
+		}
+
+		public bool Equals(SoftFloat other)
+		{
+			if (this.RawExponent != 255)
+			{
+				return (this._raw == other._raw) ||
+					((this._raw & 0x7FFFFFFF) == 0) && ((other._raw & 0x7FFFFFFF) == 0);//0==-0
+			}
+			else
+			{
+				if (this.RawMantissa == 0)
+					return this._raw == other._raw;//infinities
+				else
+					return other.RawMantissa != 0;//NaNs are equal for `Equals` (as opposed to the == operator)
+			}
+		}
+
+		public override int GetHashCode()
+		{
+			if (this._raw == SignMask)
+				return 0;// +0 equals -0
+			if (!IsNaN(this))
+				return (int)this._raw;
+			else
+				return unchecked((int)RawNaN);//All NaNs are equal
+		}
+
+		public static bool operator ==(SoftFloat f1, SoftFloat f2)
+		{
+			if (f1.RawExponent != 255)
+			{
+				return (f1._raw == f2._raw) ||
+					((f1._raw & 0x7FFFFFFF) == 0) && ((f2._raw & 0x7FFFFFFF) == 0);//0==-0
+			}
+			else
+			{
+				if (f1.RawMantissa == 0)
+					return f1._raw == f2._raw;//infinities
+				else
+					return false;//NaNs
+			}
+		}
+
+		public static bool operator !=(SoftFloat f1, SoftFloat f2)
+		{
+			return !(f1 == f2);
+		}
+
 		static SoftFloat()
 		{
 			//Init MostSignificantBit table
@@ -272,6 +341,58 @@ namespace SoftFloatTest
 					value = -1;
 				msb[i] = value;
 			}
+		}
+
+		public int CompareTo(SoftFloat other)
+		{
+			throw new NotImplementedException();
+		}
+
+		public static bool IsInfinity(SoftFloat f)
+		{
+			return (f._raw & 0x7FFFFFFF) == 0x7F800000;
+		}
+
+		public static bool IsNegativeInfinity(SoftFloat f)
+		{
+			return f._raw == RawNegativeInfinity;
+		}
+
+		public static bool IsPositiveInfinity(SoftFloat f)
+		{
+			return f._raw == RawPositiveInfinity;
+		}
+
+		public static bool IsNaN(SoftFloat f)
+		{
+			return (f.RawExponent == 255) && !IsInfinity(f);
+		}
+
+		public static bool IsFinite(SoftFloat f)
+		{
+			return f.RawExponent != 255;
+		}
+
+		public int CompareTo(object obj)
+		{
+			if (!(obj is SoftFloat))
+				throw new ArgumentException("obj");
+			return CompareTo((SoftFloat)obj);
+		}
+
+		public string ToString(string format, IFormatProvider formatProvider)
+		{
+			return ((float)this).ToString(format, formatProvider);
+		}
+
+		public string ToString(string format)
+		{
+			return ((float)this).ToString(format);
+		}
+
+		public string ToString(IFormatProvider provider)
+		{
+			return ((float)this).ToString(provider);
 		}
 	}
 }

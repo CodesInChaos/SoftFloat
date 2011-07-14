@@ -13,16 +13,19 @@ namespace SoftFloatTest
 			Stopwatch watch = new Stopwatch();
 			watch.Start();
 			SoftFloat sum = SoftFloat.Zero;
+			SoftFloat pro=(SoftFloat)1E30f;
 			float sumFloat = 0;
 			const int n = 100000000;
 
 			SoftFloat two = SoftFloat.One + SoftFloat.One;
+			SoftFloat factor=(SoftFloat)1f;
 			for (int i = 0; i < n; i++)
 			{
 				//sum += SoftFloat.One;
 				//if ((i & 0xFFFFF) == 0)
 				//	sum = SoftFloat.Zero;
-				sumFloat += 1f;
+				//sumFloat += 1f;
+				pro *= factor;
 			}
 			watch.Stop();
 			Console.WriteLine(watch.Elapsed + " " + n / watch.Elapsed.TotalSeconds);
