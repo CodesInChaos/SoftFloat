@@ -213,55 +213,129 @@ namespace SoftFloatTest
 		public static SoftFloat operator *(SoftFloat f1, SoftFloat f2)
 		{
 			int man1;
-			byte rawExp1 = f1.RawExponent;
+			int rawExp1 = f1.RawExponent;
+			uint sign1;
+			uint sign2;
 			if (rawExp1 == 0)
 			{//SubNorm
 				//man1 = f1.Mantissa
-				uint sign1 = (uint)((int)f1._raw >> 31);
-				man1 = (int)((f1.RawMantissa ^ sign1) - sign1);
+				sign1 = (uint)((int)f1._raw >> 31);
+				uint rawMan1 = f1.RawMantissa;
+				if (rawMan1 == 0 && f2.IsFinite())
+					return new SoftFloat((f1._raw ^ f2._raw) & SignMask);
 				rawExp1 = 1;
+				while ((rawMan1 & 0x800000) == 0)
+				{
+					rawMan1 <<= 1;
+					rawExp1--;
+				}
+				Debug.Assert(rawMan1 >> 23 == 1);
+				man1 = (int)((rawMan1 ^ sign1) - sign1);
 			}
 			else if (rawExp1 != 255)
 			{//Norm
 				//man1 = f1.Mantissa
-				uint sign1 = (uint)((int)f1._raw >> 31);
+				sign1 = (uint)((int)f1._raw >> 31);
 				man1 = (int)(((f1.RawMantissa | 0x800000) ^ sign1) - sign1);
 			}
 			else
 			{//Non finite
-				throw new NotImplementedException();
+				if (f1._raw == RawPositiveInfinity)
+				{
+					if (f2.IsZero())
+						return SoftFloat.NaN;
+					if (f2.IsNaN())
+						return f2;
+					if ((int)f2._raw >= 0)
+						return PositiveInfinity;
+					else
+						return NegativeInfinity;
+				}
+				else if (f1._raw == RawNegativeInfinity)
+				{
+					if (f2.IsZero())
+						return SoftFloat.NaN;
+					if (f2.IsNaN())
+						return f2;
+					if ((int)f2._raw < 0)
+						return PositiveInfinity;
+					else
+						return NegativeInfinity;
+				}
+				else return f1;
 			}
 
 			int man2;
-			byte rawExp2 = f2.RawExponent;
+			int rawExp2 = f2.RawExponent;
 			if (rawExp2 == 0)
 			{//SubNorm
 				//man2 = f2.Mantissa
-				uint sign2 = (uint)((int)f2._raw >> 31);
-				man2 = (int)(((f2.RawMantissa) ^ sign2) - sign2);
+				sign2 = (uint)((int)f2._raw >> 31);
+				uint rawMan2 = f2.RawMantissa;
+				if (rawMan2 == 0)
+					return new SoftFloat((f1._raw ^ f2._raw) & SignMask);
 				rawExp2 = 1;
+				while ((rawMan2 & 0x800000) == 0)
+				{
+					rawMan2 <<= 1;
+					rawExp2--;
+				}
+				Debug.Assert(rawMan2 >> 23 == 1);
+				man2 = (int)((rawMan2 ^ sign2) - sign2);
 			}
 			else if (rawExp2 != 255)
 			{//Norm
 				//man2 = f2.Mantissa
-				uint sign2 = (uint)((int)f2._raw >> 31);
+				sign2 = (uint)((int)f2._raw >> 31);
 				man2 = (int)(((f2.RawMantissa | 0x800000) ^ sign2) - sign2);
 			}
 			else
 			{//Non finite
-				throw new NotImplementedException();
+				if (f2._raw == RawPositiveInfinity)
+				{
+					if (f1.IsZero())
+						return SoftFloat.NaN;
+					if ((int)f1._raw >= 0)
+						return PositiveInfinity;
+					else
+						return NegativeInfinity;
+				}
+				else if (f2._raw == RawNegativeInfinity)
+				{
+					if (f1.IsZero())
+						return SoftFloat.NaN;
+					if ((int)f1._raw < 0)
+						return PositiveInfinity;
+					else
+						return NegativeInfinity;
+				}
+				else return f2;
 			}
 
 			long longMan = (long)man1 * (long)man2;
 			int man = (int)(longMan >> 23);
+			Debug.Assert(man != 0);
 			uint absMan = (uint)Math.Abs(man);
 			int rawExp = rawExp1 + rawExp2 - ExponentBias;
+			uint sign = (uint)man & 0x80000000;
 			if ((absMan & 0x1000000) != 0)
 			{
 				absMan >>= 1;
 				rawExp++;
 			}
-			uint raw = (uint)man & 0x80000000 | (uint)rawExp << 23 | absMan & 0x7FFFFF;
+			Debug.Assert(absMan >> 23 == 1);
+			if (rawExp >= 255)
+				return new SoftFloat(sign ^ RawPositiveInfinity);//Overflow
+
+			if (rawExp <= 0)
+			{//Subnorms/Underflow
+				if (rawExp <= -24)//Fixme - check correct value
+					return new SoftFloat(sign);
+				absMan >>= -rawExp + 1;
+				rawExp = 0;
+			}
+
+			uint raw = sign | (uint)rawExp << 23 | absMan & 0x7FFFFF;
 			return new SoftFloat(raw);
 		}
 
@@ -402,10 +476,10 @@ namespace SoftFloatTest
 				return 0;
 
 			uint sign1 = (uint)((int)this._raw >> 31);
-			int val1 = (int)(((this._raw) ^ sign1) - sign1);
+			int val1 = (int)(((this._raw) ^ (sign1 & 0x7FFFFFFF)) - sign1);
 
 			uint sign2 = (uint)((int)other._raw >> 31);
-			int val2 = (int)(((other._raw) ^ sign2) - sign2);
+			int val2 = (int)(((other._raw) ^ (sign2 & 0x7FFFFFFF)) - sign2);
 			return val1.CompareTo(val2);
 		}
 
@@ -626,10 +700,10 @@ namespace SoftFloatTest
 			else
 			{
 				uint sign1 = (uint)((int)f1._raw >> 31);
-				int val1 = (int)(((f1._raw) ^ sign1) - sign1);
+				int val1 = (int)(((f1._raw) ^ (sign1 & 0x7FFFFFFF)) - sign1);
 
 				uint sign2 = (uint)((int)f2._raw >> 31);
-				int val2 = (int)(((f2._raw) ^ sign2) - sign2);
+				int val2 = (int)(((f2._raw) ^ (sign2 & 0x7FFFFFFF)) - sign2);
 
 				return Math.Abs((long)val1 - (long)val2);
 			}

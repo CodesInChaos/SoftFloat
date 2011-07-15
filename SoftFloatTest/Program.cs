@@ -29,16 +29,23 @@ namespace SoftFloatTest
 			var x = SoftFloat.Epsilon + SoftFloat.Epsilon;
 			for (int i = 0; i < n; i++)
 			{
+				//pro *= factor;
+				//sum += factor;
+				//sumFloat += 1f;
+			}
+			Console.WriteLine(""+pro+" "+sumFloat+" "+ sum);
+			/*for (int i = 0; i < n; i++)
+			{
 				uint i1 = RandomUInt32();
 				uint i2 = RandomUInt32();
 
 				SoftFloat sf1 = SoftFloat.FromIeeeRaw(i1);
 				SoftFloat sf2 = SoftFloat.FromIeeeRaw(i2);
-				SoftFloat sf = sf1 - sf2;
+				SoftFloat sf = sf1 * sf2;
 
 				float f1 = (float)sf1;
 				float f2 = (float)sf2;
-				float f = f1 - f2;
+				float f = f1 * f2;
 				SoftFloat sfc = (SoftFloat)f;
 
 				long error = SoftFloat.RawDistance(sf, sfc);
@@ -49,9 +56,9 @@ namespace SoftFloatTest
 						" expecting " + sfc.ToIeeeRaw() +
 						" error=" + error);
 				}
-			}
+			}*/
 			watch.Stop();
-			Console.WriteLine(watch.Elapsed + " " + n / watch.Elapsed.TotalSeconds);
+			Console.WriteLine(watch.Elapsed + " " + Math.Round(n / watch.Elapsed.TotalSeconds / 1000000, 2) + "M FLOPS");
 			Console.ReadLine();
 		}
 	}
