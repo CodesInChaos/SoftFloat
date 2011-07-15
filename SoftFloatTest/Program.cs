@@ -17,8 +17,8 @@ namespace SoftFloatTest
 
 		static void Main(string[] args)
 		{
-			Stopwatch watch = new Stopwatch();
-			watch.Start();
+			new Tests();
+			
 			SoftFloat sum = SoftFloat.Zero;
 			SoftFloat pro = (SoftFloat)1E30f;
 			float sumFloat = 0;
@@ -27,13 +27,19 @@ namespace SoftFloatTest
 			SoftFloat two = SoftFloat.One + SoftFloat.One;
 			SoftFloat factor = (SoftFloat)1f;
 			var x = SoftFloat.Epsilon + SoftFloat.Epsilon;
+
+			Stopwatch watch = new Stopwatch();
+			watch.Start();
 			for (int i = 0; i < n; i++)
 			{
 				//pro *= factor;
 				//sum += factor;
-				//sumFloat += 1f;
+				sumFloat *= 1f;
 			}
-			Console.WriteLine(""+pro+" "+sumFloat+" "+ sum);
+			watch.Stop();
+			Console.WriteLine(watch.Elapsed + " " + Math.Round(n / watch.Elapsed.TotalSeconds / 1000000, 2) + "M FLOPS");
+			Console.WriteLine("" + pro + " " + sumFloat + " " + sum);
+
 			/*for (int i = 0; i < n; i++)
 			{
 				uint i1 = RandomUInt32();
@@ -57,8 +63,6 @@ namespace SoftFloatTest
 						" error=" + error);
 				}
 			}*/
-			watch.Stop();
-			Console.WriteLine(watch.Elapsed + " " + Math.Round(n / watch.Elapsed.TotalSeconds / 1000000, 2) + "M FLOPS");
 			Console.ReadLine();
 		}
 	}

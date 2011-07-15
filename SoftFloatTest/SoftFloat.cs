@@ -86,6 +86,7 @@ namespace SoftFloatTest
 		public static SoftFloat One { get { return new SoftFloat(RawOne); } }
 		public static SoftFloat MinusOne { get { return new SoftFloat(RawMinusOne); } }
 		public static SoftFloat MaxValue { get { return new SoftFloat(RawMaxValue); } }
+		public static SoftFloat MinValue { get { return new SoftFloat(RawMinValue); } }
 		public static SoftFloat Epsilon { get { return new SoftFloat(RawEpsilon); } }
 
 		public override string ToString()
