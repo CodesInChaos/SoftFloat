@@ -24,17 +24,13 @@ namespace SoftFloatTest
 			{
 				if (RawExponent != 0)
 				{
-					if ((int)_raw >= 0)
-						return (int)(RawMantissa | 0x800000);
-					else
-						return -(int)(RawMantissa | 0x800000);
+					uint sign = (uint)((int)_raw >> 31);
+					return (int)(((RawMantissa | 0x800000) ^ sign) - sign);
 				}
 				else
 				{
-					if ((int)_raw >= 0)
-						return (int)RawMantissa;
-					else
-						return -(int)RawMantissa;
+					uint sign = (uint)((int)_raw >> 31);
+					return (int)(((RawMantissa) ^ sign) - sign);
 				}
 			}
 		}
@@ -119,12 +115,11 @@ namespace SoftFloatTest
 					}
 					else
 					{//Subnorm
-						//man1 = f1.Mantissa
-						uint sign1 = (uint)((int)f1._raw >> 31);
-						man1 = (int)((f1.RawMantissa ^ sign1) - sign1);
 						//man2 = f2.Mantissa
 						uint sign2 = (uint)((int)f2._raw >> 31);
 						man2 = (int)((f2.RawMantissa ^ sign2) - sign2);
+
+						man1 = f1.Mantissa;
 
 						rawExp2 = 1;
 						if (rawExp1 == 0)
@@ -141,6 +136,7 @@ namespace SoftFloatTest
 					{
 						rawExp -= 8;
 						absMan <<= 8;
+						msb = absMan >> 23;
 					}
 					int msbIndex = BitScanReverse8(msb);
 					rawExp += msbIndex;
@@ -161,7 +157,7 @@ namespace SoftFloatTest
 						}
 						if (rawExp >= -24)//Fixme
 						{
-							uint raw = (uint)man & 0x80000000 | absMan >> (-rawExp);
+							uint raw = (uint)man & 0x80000000 | absMan >> (-rawExp+1);
 							return new SoftFloat(raw);
 						}
 						return Zero;
@@ -170,8 +166,8 @@ namespace SoftFloatTest
 				else
 				{//special
 
-					if (rawExp1 != 0)//f2 is NaN, +Inf, -Inf and f1 is finite
-						return f2;
+					if (rawExp2 != 255)//f1 is NaN, +Inf, -Inf and f2 is finite
+						return f1;
 					// Both not finite
 					if (f1._raw == f2._raw)
 						return f1;
@@ -510,6 +506,37 @@ namespace SoftFloatTest
 		public static int Sign(SoftFloat value)
 		{
 			throw new NotImplementedException();
+		}
+
+		public uint ToIeeeRaw()
+		{
+			return _raw;
+		}
+
+		public static long RawDistance(SoftFloat f1, SoftFloat f2)
+		{
+			if (!(SoftFloat.IsFinite(f1) && SoftFloat.IsFinite(f2)))
+			{
+				if (f1.Equals(f2))
+					return 0;
+				else
+					return long.MaxValue;
+			}
+			else
+			{
+				uint sign1 = (uint)((int)f1._raw >> 31);
+				int val1 = (int)(((f1._raw) ^ sign1) - sign1);
+
+				uint sign2 = (uint)((int)f2._raw >> 31);
+				int val2 = (int)(((f2._raw) ^ sign2) - sign2);
+
+				return Math.Abs((long)val1 - (long)val2);
+			}
+		}
+
+		public static SoftFloat FromIeeeRaw(uint ieeeRaw)
+		{
+			return new SoftFloat(ieeeRaw);
 		}
 	}
 }
