@@ -74,6 +74,10 @@ namespace SoftFloatTest
 		private const uint RawMaxValue = 0x7F7FFFFF;
 		private const uint RawMinValue = 0x7F7FFFFF ^ SignMask;
 		private const uint RawEpsilon = 0x00000001;
+		private const uint RawOneOverLog2Of10 = 0;//Fixme
+		private const uint RawOneOverLog2OfE = 0;//Fixme
+		private const uint RawLog2OfE = 0;
+
 
 		public static SoftFloat Zero { get { return new SoftFloat(); } }
 		public static SoftFloat PositiveInfinity { get { return new SoftFloat(RawPositiveInfinity); } }
@@ -106,10 +110,7 @@ namespace SoftFloatTest
 			return new SoftFloat(f._raw ^ 0x80000000);
 		}
 
-		public bool IsFinite()
-		{
-			return RawExponent != 255;
-		}
+
 
 		public static SoftFloat operator +(SoftFloat f1, SoftFloat f2)
 		{
@@ -178,7 +179,7 @@ namespace SoftFloatTest
 						}
 						if (rawExp >= -24)//Fixme
 						{
-							uint raw = (uint)man & 0x80000000 | absMan >> (-rawExp+1);
+							uint raw = (uint)man & 0x80000000 | absMan >> (-rawExp + 1);
 							return new SoftFloat(raw);
 						}
 						return Zero;
@@ -262,6 +263,11 @@ namespace SoftFloatTest
 			}
 			uint raw = (uint)man & 0x80000000 | (uint)rawExp << 23 | absMan & 0x7FFFFF;
 			return new SoftFloat(raw);
+		}
+
+		public static SoftFloat operator /(SoftFloat f1, SoftFloat f2)
+		{
+			throw new NotImplementedException();
 		}
 
 		private static readonly sbyte[] msb = new sbyte[256];
@@ -364,27 +370,43 @@ namespace SoftFloatTest
 
 		public static bool operator <(SoftFloat f1, SoftFloat f2)
 		{
-			throw new NotImplementedException();
+			if (f1.IsNaN() || f2.IsNaN())
+				return false;
+			return f1.CompareTo(f2) < 0;
 		}
 
 		public static bool operator >(SoftFloat f1, SoftFloat f2)
 		{
-			throw new NotImplementedException();
+			if (f1.IsNaN() || f2.IsNaN())
+				return false;
+			return f1.CompareTo(f2) > 0;
 		}
 
 		public static bool operator <=(SoftFloat f1, SoftFloat f2)
 		{
-			throw new NotImplementedException();
+			if (f1.IsNaN() || f2.IsNaN())
+				return false;
+			return f1.CompareTo(f2) <= 0;
 		}
 
 		public static bool operator >=(SoftFloat f1, SoftFloat f2)
 		{
-			throw new NotImplementedException();
+			if (f1.IsNaN() || f2.IsNaN())
+				return false;
+			return f1.CompareTo(f2) >= 0;
 		}
 
 		public int CompareTo(SoftFloat other)
 		{
-			throw new NotImplementedException();
+			if (this.IsNaN() && other.IsNaN())
+				return 0;
+
+			uint sign1 = (uint)((int)this._raw >> 31);
+			int val1 = (int)(((this._raw) ^ sign1) - sign1);
+
+			uint sign2 = (uint)((int)other._raw >> 31);
+			int val2 = (int)(((other._raw) ^ sign2) - sign2);
+			return val1.CompareTo(val2);
 		}
 
 		public static bool IsInfinity(SoftFloat f)
@@ -392,14 +414,34 @@ namespace SoftFloatTest
 			return (f._raw & 0x7FFFFFFF) == 0x7F800000;
 		}
 
+		public bool IsInfinity()
+		{
+			return (_raw & 0x7FFFFFFF) == 0x7F800000;
+		}
+
 		public static bool IsNegativeInfinity(SoftFloat f)
 		{
 			return f._raw == RawNegativeInfinity;
 		}
 
+		public bool IsNegativeInfinity()
+		{
+			return _raw == RawNegativeInfinity;
+		}
+
 		public static bool IsPositiveInfinity(SoftFloat f)
 		{
 			return f._raw == RawPositiveInfinity;
+		}
+
+		public bool IsPositiveInfinity()
+		{
+			return _raw == RawPositiveInfinity;
+		}
+
+		public bool IsNaN()
+		{
+			return (RawExponent == 255) && !IsInfinity();
 		}
 
 		public static bool IsNaN(SoftFloat f)
@@ -410,6 +452,16 @@ namespace SoftFloatTest
 		public static bool IsFinite(SoftFloat f)
 		{
 			return f.RawExponent != 255;
+		}
+
+		public bool IsFinite()
+		{
+			return RawExponent != 255;
+		}
+
+		public bool IsZero()
+		{
+			return (_raw & 0x7FFFFFFF) == 0;
 		}
 
 		public int CompareTo(object obj)
@@ -447,6 +499,11 @@ namespace SoftFloatTest
 		}
 
 		public static SoftFloat Exp(SoftFloat f)
+		{
+			return Pow2(f * new SoftFloat(RawLog2OfE));
+		}
+
+		public static SoftFloat Pow2(SoftFloat f)
 		{
 			throw new NotImplementedException();
 		}
@@ -494,29 +551,46 @@ namespace SoftFloatTest
 			throw new NotImplementedException();
 		}
 
-		public static SoftFloat Log(SoftFloat f)
+		public static SoftFloat Ln(SoftFloat f)
+		{
+			return Log2(f) * new SoftFloat(RawOneOverLog2OfE);
+		}
+
+		public static SoftFloat Log2(SoftFloat a)
 		{
 			throw new NotImplementedException();
 		}
 
 		public static SoftFloat Log(SoftFloat a, SoftFloat newBase)
 		{
-			throw new NotImplementedException();
+			return Log2(a) / Log2(newBase);
 		}
 
 		public static SoftFloat Log10(SoftFloat f)
 		{
-			throw new NotImplementedException();
+			return Log2(f) * new SoftFloat(RawOneOverLog2Of10);
 		}
 
+		//Returns NaN iff either argument is NaN
 		public static SoftFloat Max(SoftFloat val1, SoftFloat val2)
 		{
-			throw new NotImplementedException();
+			if (val1 > val2)
+				return val1;
+			else if (IsNaN(val1))
+				return val1;
+			else
+				return val2;
 		}
 
+		//Returns NaN iff either argument is NaN
 		public static SoftFloat Min(SoftFloat val1, SoftFloat val2)
 		{
-			throw new NotImplementedException();
+			if (val1 < val2)
+				return val1;
+			else if (IsNaN(val1))
+				return val1;
+			else
+				return val2;
 		}
 
 		public static SoftFloat Pow(SoftFloat x, SoftFloat y)
@@ -526,7 +600,13 @@ namespace SoftFloatTest
 
 		public static int Sign(SoftFloat value)
 		{
-			throw new NotImplementedException();
+			if (IsNaN(value))
+				throw new ArithmeticException("Sign doesn't support NaN argument");
+			if ((value._raw & 0x7FFFFFFF) == 0)
+				return 0;
+			else if ((int)value >= 0)
+				return 1;
+			else return -1;
 		}
 
 		public uint ToIeeeRaw()
